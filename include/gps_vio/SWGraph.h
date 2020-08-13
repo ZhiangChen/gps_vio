@@ -6,6 +6,7 @@
 #define SWGRAPH_H
 
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
+
 using namespace gtsam;
 
 class SWGraph
