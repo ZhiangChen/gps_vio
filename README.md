@@ -1,7 +1,5 @@
 # gps_vio
-<<<<<<< HEAD
-A ROS package: GPS-aided VIO based on Realsense T265 and PX4
-=======
+
 A ROS package: GPS-aided VIO based on Realsense T265 and PX4
 
 ## Installation
@@ -41,4 +39,4 @@ roslaunch gps_vio gps_vio.launch
 ```
 
 ## Factor Graph
->>>>>>> d39ca5c5b2bd7f702024aecb05886bddaf6648fe
+
