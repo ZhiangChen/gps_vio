@@ -18,28 +18,63 @@
 
 #include "gps_vio/param.cpp"
 
-template <class T> class GPSVIO
+enum class NODE_TYPE {
+  GPS_VIO,
+  VIO,
+  GPS,
+};
+
+template <class T>
+class GPSVIO
 {
 public:
 	GPSVIO(const ros::NodeHandle& nh);
 	
-
 protected:
-	//ros
+	/****************** ros ******************/
 	ros::NodeHandle nh_;
+	ros::Publisher odom_pub_;
 	ros::Subscriber sub_gps_;
 	ros::Subscriber sub_vio_;
+	void gpsCallback(const nav_msgs::Odometry::ConstPtr &gps_odom);
+	void vioCallback(const nav_msgs::Odometry::ConstPtr &vio_odom);
+
 	typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, nav_msgs::Odometry> GPS_VIO_POLICY;
 	message_filters::Subscriber<nav_msgs::Odometry> *gps_sub_; // message filter
 	message_filters::Subscriber<nav_msgs::Odometry> *vio_sub_;
 	message_filters::Synchronizer<GPS_VIO_POLICY> *gps_vio_sync_;
 	void gpsVioCallback_(const nav_msgs::Odometry::ConstPtr &gps_odom, const nav_msgs::Odometry::ConstPtr &vio_odom);
 
-	//graph
+
+	ros::Timer timer_;
+	void timerCallback(const ros::TimerEvent& event);
+
+	/****************** graph ******************/
 	T graph_;
+
+	/****************** process ******************/
+	nav_msgs::Odometry newGPS_;
+	nav_msgs::Odometry oldGPS_;
+	nav_msgs::Odometry newVIO_;
+	nav_msgs::Odometry oldVIO_;
+	nav_msgs::Odometry newGPSVIO_GPS_;
+	nav_msgs::Odometry oldGPSVIO_GPS_;
+	nav_msgs::Odometry newGPSVIO_VIO_;
+	nav_msgs::Odometry oldGPSGPS_VIO_;
+	bool flag_gps_ = false;
+	bool flag_vio_ = false;
+	bool flag_gpsvio_ = false;
+	NODE_TYPE last_node_type_;
+
+	void gpsVioVarUpdate_();
+	void gpsVarUpdate_();
+	void vioVarUpdate_();
+	void publishOdom_();
+
+
 };
 
-#include "gps_vio/GPSVIO.tpp"
+#include "gps_vio/GPSVIO.cpp"
 
 #endif 
 

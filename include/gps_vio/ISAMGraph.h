@@ -5,11 +5,18 @@
 #ifndef ISAMGRAPH_H
 #define ISAMGRAPH_H
 
+#include <nav_msgs/Odometry.h>
+
+#include <gps_vio/param.cpp>
 
 class ISAMGraph
 {
 public:
 	ISAMGraph();
+	void updateGPSVIO(nav_msgs::Odometry gps_odom, nav_msgs::Odometry vio_odom);
+	void updateGPS(nav_msgs::Odometry gps_odom);
+	void updateVIO(nav_msgs::Odometry vio_odom);
+	nav_msgs::Odometry getOdom();
 };
 
 

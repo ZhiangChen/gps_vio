@@ -20,6 +20,8 @@ int main(int argc, char** argv)
 	GPSVIO<SWGraph> gps_vio(nh);
 	// parameters are stored in "include/gps_vio/param.cpp"
 
-	ros::spin();
+	ros::AsyncSpinner spinner(2);
+	spinner.start();
+	ros::waitForShutdown();
 	return 0;
 }
