@@ -24,7 +24,7 @@ roslaunch gps_vio gazebo_test.launch
 ```
 
 #### Real world
-We have Pixhawk 2 with an RTK GPS and an Intel NUC as a companion computer. A Realsense T265 tracking camera is connected with the Intel NUC. First, PX4 and Realsense T265 need to be launched on the Intel NUC
+We have Pixhawk 2 with an RTK GPS, an Intel NUC as a companion computer, and a Realsense T265 tracking camera connected with the Intel NUC. First, PX4 and Realsense T265 need to be launched on the Intel NUC
 ```
 roslaunch px4 px4.launch
 roslaunch realsense2_camera rs_t265.launch
