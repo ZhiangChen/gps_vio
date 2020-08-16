@@ -16,9 +16,12 @@ GPSVIO<T>::GPSVIO(const ros::NodeHandle& nh): nh_(nh)
 	sub_vio_ = nh_.subscribe("/vio/odom", 1, &GPSVIO::vioCallback, this, ros::TransportHints().tcpNoDelay());
 
 	// wait first gps+vio
-	while(!flag_gpsvio_)
+	while(!flag_gpsvio_ && ros::ok())
 	{
 		ros::spinOnce();
+		ROS_INFO("GPSVIO: Wait for gps+vio");
+		ros::Duration(0.1).sleep();
+
 	}
 	// initialize graph
 	graph_.updateGPSVIO(newGPSVIO_GPS_, newGPSVIO_VIO_);
@@ -26,7 +29,7 @@ GPSVIO<T>::GPSVIO(const ros::NodeHandle& nh): nh_(nh)
 	gpsVioVarUpdate_();
 	// start timer to update graph
 	timer_ = nh_.createTimer(ros::Duration(1.0/RATE), &GPSVIO::timerCallback, this);  // RATE is defined in param.cpp
-
+	ROS_INFO("GPSVIO has been initialized!");
 }
 
 template <class T> 
