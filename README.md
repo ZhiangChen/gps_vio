@@ -17,9 +17,10 @@ catkin build gps_vio
 
 ## Getting Started
 #### Gazebo
-PX4 sitl has been used in Gazebo to simulate an aircraft with GPS. VIO is replaced by Gaussian-noise-added ground truth from a gazebo plugin, [libgazebo_ros_p3d](http://docs.ros.org/electric/api/gazebo_plugins/html/group__GazeboRosP3D.html). The reason for this simplification is that only local transitions from VIO are used to build a factor graph and the global drift correction dependes on global pose estimation from FCU and GPS. First, launch a robot model in gazebo with GPS odometry and VIO odometry. Note covariance matrices in both odometries are used to build factors, otherwise you need to define static covariance matrices in the launch file ```gazebo_test.launch```. Then, modify the GPS odometry topic and VIO odometry topic names, and launch the test
+PX4 sitl has been used in Gazebo to simulate an aircraft with GPS. gps_vio subscribes to ```/mavros/odometry/in``` for fake VIO and to ```/mavros/_position/local``` for GPS. First, launch a robot model with PX4 SITL. Note covariance matrices in both odometries are used to build factors, otherwise you need to define static covariance matrices in the launch file ```gazebo_test.launch```. Then, modify the GPS odometry topic and VIO odometry topic names, and launch the test
 
 ```
+roslaunch px4 mavros_posix_sitl.launch
 roslaunch gps_vio gazebo_test.launch
 ```
 
