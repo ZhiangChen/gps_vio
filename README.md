@@ -17,7 +17,7 @@ catkin build gps_vio
 
 ## Getting Started
 #### Gazebo
-PX4 sitl has been used in Gazebo to simulate an aircraft with GPS. gps_vio subscribes to ```/mavros/odometry/in``` for fake VIO and to ```/mavros/_position/local``` for GPS. First, launch a robot model with PX4 SITL. Note covariance matrices in both odometries are used to build factors, otherwise you need to define static covariance matrices in the parameter file ```param.cpp```. Then launch the node
+PX4 sitl has been used in Gazebo to simulate an aircraft with GPS. gps_vio subscribes to ```/mavros/odometry/in``` for fake VIO and to ```/mavros/global_position/local``` for GPS. First, launch a robot model with PX4 SITL. Note covariance matrices in both odometries are used to build factors, otherwise you need to define static covariance matrices in the parameter file ```param.cpp```. Then launch the node
 
 ```
 roslaunch px4 mavros_posix_sitl.launch
