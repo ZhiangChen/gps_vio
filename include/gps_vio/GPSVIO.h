@@ -21,7 +21,6 @@
 enum class NODE_TYPE {
   GPS_VIO,
   VIO,
-  GPS,
 };
 
 template <class T>
@@ -34,9 +33,9 @@ protected:
 	/****************** ros ******************/
 	ros::NodeHandle nh_;
 	ros::Publisher odom_pub_;
-	ros::Subscriber sub_gps_;
+	//ros::Subscriber sub_gps_;
 	ros::Subscriber sub_vio_;
-	void gpsCallback(const nav_msgs::Odometry::ConstPtr &gps_odom);
+	//void gpsCallback(const nav_msgs::Odometry::ConstPtr &gps_odom);
 	void vioCallback(const nav_msgs::Odometry::ConstPtr &vio_odom);
 
 	typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, nav_msgs::Odometry> GPS_VIO_POLICY;
@@ -53,21 +52,22 @@ protected:
 	T graph_;
 
 	/****************** process ******************/
-	nav_msgs::Odometry newGPS_;
-	nav_msgs::Odometry oldGPS_;
+	//nav_msgs::Odometry newGPS_;
+	//nav_msgs::Odometry oldGPS_;
 	nav_msgs::Odometry newVIO_;
 	nav_msgs::Odometry oldVIO_;
 	nav_msgs::Odometry newGPSVIO_GPS_;
 	nav_msgs::Odometry oldGPSVIO_GPS_;
 	nav_msgs::Odometry newGPSVIO_VIO_;
 	nav_msgs::Odometry oldGPSGPS_VIO_;
-	bool flag_gps_ = false;
+	nav_msgs::Odometry current_odom_;
+	//bool flag_gps_ = false;
 	bool flag_vio_ = false;
 	bool flag_gpsvio_ = false;
 	NODE_TYPE last_node_type_;
 
 	void gpsVioVarUpdate_();
-	void gpsVarUpdate_();
+	//void gpsVarUpdate_();
 	void vioVarUpdate_();
 	void publishOdom_();
 
