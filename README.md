@@ -1,6 +1,6 @@
 # gps_vio
 
-A ROS package: GPS-aided VIO based on Realsense T265 and PX4
+A ROS package: GPS-aided VIO using a factor graph that fuses VIO from Realsense T265 and GPS from PX4
 
 ## Installation
 #### Dependences
