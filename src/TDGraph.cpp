@@ -4,8 +4,9 @@
 
 #include "gps_vio/TDGraph.h"
 
-TDGraph::TDGraph()
-{}
+TDGraph::TDGraph(Pose3 EMatrix): EMatrix_(EMatrix)
+{
+}
 
 void TDGraph::updateGPSVIO(nav_msgs::Odometry gps_odom, nav_msgs::Odometry vio_odom)
 {

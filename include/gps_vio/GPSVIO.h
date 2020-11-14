@@ -33,10 +33,8 @@ protected:
 	/****************** ros ******************/
 	ros::NodeHandle nh_;
 	ros::Publisher odom_pub_;
-	//ros::Subscriber sub_gps_;
 	ros::Subscriber sub_vio_;
-	//void gpsCallback(const nav_msgs::Odometry::ConstPtr &gps_odom);
-	void vioCallback(const nav_msgs::Odometry::ConstPtr &vio_odom);
+	void vioCallback_(const nav_msgs::Odometry::ConstPtr &vio_odom);
 
 	typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, nav_msgs::Odometry> GPS_VIO_POLICY;
 	message_filters::Subscriber<nav_msgs::Odometry> *gps_sub_; // message filter
@@ -46,10 +44,10 @@ protected:
 
 
 	ros::Timer timer_;
-	void timerCallback(const ros::TimerEvent& event);
+	void timerCallback_(const ros::TimerEvent& event);
 
 	/****************** graph ******************/
-	T graph_;
+	T* graph_;
 
 	/****************** process ******************/
 	//nav_msgs::Odometry newGPS_;
@@ -70,6 +68,12 @@ protected:
 	//void gpsVarUpdate_();
 	void vioVarUpdate_();
 	void publishOdom_();
+	/****************** calibration ******************/
+	ros::Subscriber sub_gps_;
+	void gpsCallback_(const nav_msgs::Odometry::ConstPtr &gps_odom);
+	bool calib_ = false;
+	std::vector<nav_msgs::Odometry> GPS_vec_;
+	Pose3 EMatrix_;
 
 
 };
