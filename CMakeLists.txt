@@ -18,6 +18,9 @@ cs_add_library(gps_vio_lib src/ISAMGraph.cpp src/ISAM2Graph.cpp src/SWGraph.cpp 
 cs_add_executable(GPSVIO_ros_node src/GPSVIO_ros_node.cpp)
 target_link_libraries(GPSVIO_ros_node gps_vio_lib gtsam)
 
+#cs_add_executable(calib_ros_node src/calib_ros_node.cpp)
+#target_link_libraries(calib_ros_node gtsam)
+
 
 cs_install()
 cs_export()

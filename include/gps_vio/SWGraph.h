@@ -80,13 +80,12 @@ struct SWindow{
 class SWGraph
 {
 public:
-	SWGraph(Pose3 EMatrix);
+	SWGraph();
 	void updateGPSVIO(nav_msgs::Odometry gps_odom, nav_msgs::Odometry vio_odom);
 	void updateVIO(nav_msgs::Odometry vio_odom);
 	nav_msgs::Odometry getOdom();
 
 private:
-	Pose3 EMatrix_;
 	NonlinearFactorGraph graph_;
 	Values initials_;
 	SWindow swindow_ = SWindow(MAX_NODE);

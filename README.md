@@ -41,11 +41,15 @@ roslaunch gps_vio gps_vio.launch
 
 ## Factor Graph
 
+
 ## Tracking camera external calibration
-[Realsense T265 coordinate system](https://github.com/IntelRealSense/librealsense/blob/master/doc/t265.md)  
-![realsense t265 external calibration](doc/T265_sensor_extrinsics.png)
+PX4 and Realsense T265 have different coordinate systems. I use an [M-estimator or Robust Error Model](https://gtsam.org/2019/09/20/robust-noise-model.html) to estimate the transform betweem the T265 camera and the Pixhawk FCU. More information be can found on [the wiki](https://github.com/ZhiangChen/gps_vio/wiki/T265-External-Calibration). 
 
 [PX4 coordinate system](https://dev.px4.io/v1.9.0/en/ros/external_position_estimation.html#ros_reference_frames)  
 ENU(X East, Y North, and Z Up) has been used here.
 
-Since the camera pose is initalized as 0 for both position and orientation (from realsense-ros packages), I have a soft calibration such that every odometry from Realsense T265 will be transformed to the initial PX4 local coordinate system before fusing it to the factor graph.
+[Realsense T265 coordinate system](https://github.com/IntelRealSense/librealsense/blob/master/doc/t265.md)  
+![realsense t265 external calibration](doc/T265_sensor_extrinsics.png)
+
+
+

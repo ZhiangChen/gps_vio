@@ -47,7 +47,7 @@ protected:
 	void timerCallback_(const ros::TimerEvent& event);
 
 	/****************** graph ******************/
-	T* graph_;
+	T* graph_ = new T();
 
 	/****************** process ******************/
 	//nav_msgs::Odometry newGPS_;
@@ -69,12 +69,12 @@ protected:
 	void vioVarUpdate_();
 	void publishOdom_();
 	/****************** calibration ******************/
-	ros::Subscriber sub_gps_;
+	/*ros::Subscriber sub_gps_;
 	void gpsCallback_(const nav_msgs::Odometry::ConstPtr &gps_odom);
 	bool calib_ = false;
 	std::vector<nav_msgs::Odometry> GPS_vec_;
 	Pose3 EMatrix_;
-
+	*/
 
 };
 

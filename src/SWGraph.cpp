@@ -4,10 +4,13 @@
 
 #include "gps_vio/SWGraph.h"
 
-SWGraph::SWGraph(Pose3 EMatrix): EMatrix_(EMatrix)
+SWGraph::SWGraph()
 {
+	Rot3 unit_rot = Rot3();
+	Point3 zero_point(0, 0, 0);
+	Pose3 init_pose(unit_rot, zero_point);
 	gaussian_cov init_cov = noiseModel::Diagonal::Sigmas( (Vector(6) << 0.001, 0.001, 0.001, 0.001, 0.001, 0.001).finished());
-	swindow_.fixed_size_push(EMatrix_, EMatrix_, swindow_.vio_type, init_cov);
+	swindow_.fixed_size_push(init_pose, init_pose, swindow_.vio_type, init_cov);
 }
 
 void SWGraph::updateGPSVIO(nav_msgs::Odometry gps_odom, nav_msgs::Odometry vio_odom)
@@ -19,14 +22,14 @@ void SWGraph::updateGPSVIO(nav_msgs::Odometry gps_odom, nav_msgs::Odometry vio_o
 	//gps_pose_gaussian.cov->print("gps: ");
 	swindow_.fixed_size_push(vio_pose_gaussian.mean, vio_pose_gaussian.mean, swindow_.vio_type, vio_pose_gaussian.cov);
 	swindow_.fixed_size_push(gps_pose_gaussian.mean, gps_pose_gaussian.mean, swindow_.gps_type, gps_pose_gaussian.cov);
-	latest_odom_ = vio_odom;
+	latest_odom_ = vio_odom;  // re-use stamp and frame_id
 }
 
 void SWGraph::updateVIO(nav_msgs::Odometry vio_odom)
 {
 	Pose3Gaussian vio_pose_gaussian = vio_odom_to_pose3_(vio_odom);
 	swindow_.fixed_size_push(vio_pose_gaussian.mean, vio_pose_gaussian.mean, swindow_.vio_type, vio_pose_gaussian.cov);
-	latest_odom_ = vio_odom;
+	latest_odom_ = vio_odom; // re-use stamp and frame_id
 }
 
 nav_msgs::Odometry SWGraph::getOdom()
@@ -68,8 +71,6 @@ Pose3Gaussian SWGraph::gps_odom_to_pose3_(nav_msgs::Odometry odom)
 	Rot3 rot(quat.w, quat.x, quat.y, quat.z);
 	Point3 point(p.x, p.y, p.z);
 	Pose3 pose(rot, point);
-
-	pose = EMatrix_*pose;  // external calibration
 
 	vector<double> v{odom.pose.covariance[0], odom.pose.covariance[7], odom.pose.covariance[14],
   		  odom.pose.covariance[21], odom.pose.covariance[28], odom.pose.covariance[35]};

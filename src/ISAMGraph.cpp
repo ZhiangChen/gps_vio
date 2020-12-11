@@ -4,7 +4,7 @@
 
 #include "gps_vio/ISAMGraph.h"
 
-ISAMGraph::ISAMGraph(Pose3 EMatrix): EMatrix_(EMatrix)
+ISAMGraph::ISAMGraph()
 {
 }
 

@@ -4,7 +4,7 @@
 
 #include "gps_vio/TDGraph.h"
 
-TDGraph::TDGraph(Pose3 EMatrix): EMatrix_(EMatrix)
+TDGraph::TDGraph()
 {
 }
 

@@ -5,7 +5,7 @@
 // GPSVIO
 #define Queue_Size 10  // the queue size for gps and vio message synchronization
 #define RATE 30  // odom output rate
-#define CALIB_NM 20 // the number of gps odom needed for tracking camera calibration
+#define CALIB_NM 10 // the number of gps odom needed for tracking camera calibration
 
 // SWGraph
 #define MAX_NODE 400 // maximum node number in sliding window
