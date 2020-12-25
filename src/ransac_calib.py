@@ -10,9 +10,16 @@ from nav_msgs.msg import Odometry
 import numpy as np
 import message_filters
 import tf
+import random
+from geometry_msgs.msg._Pose import Pose
 
 class Calibrator(object):
     def __init__(self):
+        self.samples = []
+        self.distance_threshold = 0.1
+        self.distance_max = 2.0
+        self.angle_threshold = 15/180.*np.pi
+        self.previous_vio_rot = 0
         self.sub_gps = message_filters.Subscriber('/gps/odom', Odometry)
         self.sub_vio = message_filters.Subscriber('/vio/odom', Odometry)
         self.ts = message_filters.ApproximateTimeSynchronizer([self.sub_gps, self.sub_vio], queue_size=10, slop=0.1)
@@ -23,19 +30,57 @@ class Calibrator(object):
     def callback(self, gps_data, vio_data):
         gps_pos = self.getPositionFromOdom(gps_data)
         vio_pos = self.getPositionFromOdom(vio_data)
+        gps_rot = self.getRotFromOdom(gps_data)
+        vio_rot = self.getRotFromOdom(vio_data)
         # append sample
+        sample = np.asarray((gps_pos, vio_pos)).transpose()
+        if len(self.samples) == 0:
+            self.samples.append(sample)
+            self.previous_vio_rot = vio_rot
+        else:
+            previous_sample = self.samples[-1]
+            distance = np.linalg.norm(previous_sample - sample)
+            if distance < self.distance_threshold:
+                return
+            
+            angle = self.calcRotationDiff(self.previous_vio_rot, vio_rot)
+            
+            if angle <= self.angle_threshold:
+                self.samples.append(sample)
+                self.resetDistanceThreshold()
+                self.previous_vio_rot = vio_rot
         # estimate transform using RANSAC
+        if len(self.samples) % 10 == 0:
+            self.estimateTransform()
         
         
-    def appendSample(self, gps_pos, vio_pos):
-        # ignore those without enough distance threshold
-        # the distance threshold are randomly sampled
-        
-        # ignore those with large rotation error 
-        pass
+    def resetDistanceThreshold(self):
+        self.distance_threshold = random.random()*self.distance_max
+        print("Next translation goal: ", self.distance_threshold)
+    
+    def calcRotationDiff(self, r1, r2):
+        err_matrix = (np.matmul(r1.transpose(),r2) - np.matmul(r1,r2.transpose()))/2.
+        x3 = err_matrix[1, 0]
+        x2 = err_matrix[0, 2]
+        x1 = err_matrix[2, 1]
+        return (x1 + x2 + x3)
     
     def estimateTransform(self):
-        
+        # get delta data
+        delta_gps = []
+        delta_vio = []
+        N = len(self.samples)
+        for i in range(N-1):
+            pos = self.samples[i]
+            pos_ = self.samples[i+1]
+            delta = pos_ - pos 
+            delta_gps.append(delta[:, 0])
+            delta_vio.append(delta[:, 1])
+        print(delta_gps)
+        print(delta_vio)
+        print('x')
+            
+        # ransac
         pass
     
     def getPositionFromOdom(self, odom):
@@ -43,6 +88,16 @@ class Calibrator(object):
         y = odom.pose.pose.position.y
         z = odom.pose.pose.position.z
         return np.asarray((x, y, z, 1))
+    
+    def getRotFromOdom(self, odom):
+        x = odom.pose.pose.orientation.x
+        y = odom.pose.pose.orientation.y
+        z = odom.pose.pose.orientation.z
+        w = odom.pose.pose.orientation.w
+        qua = (x, y, z, w)
+        rot = tf.transformations.quaternion_matrix(qua)
+        return rot
+        
      
         
 class Transformer(object):
@@ -84,15 +139,10 @@ class Transformer(object):
         self.pub_vio.publish(tf_odom)
         
         
-        
-        
-        
-        
-
 if __name__ == '__main__':
     rospy.init_node('calibrator', anonymous=False)
     vio_Transformer = Transformer()
-    #calib = Calibrator()
+    calib = Calibrator()
 
     try:
         rospy.spin()

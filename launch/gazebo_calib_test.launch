@@ -11,6 +11,6 @@
 		<!--remap from="/vio/odom" to="/mavros/odometry/in"/-->
 	</node>
 
-	<node pkg="rviz" type="rviz" name="rviz" output="screen"/>
+	<!--node pkg="rviz" type="rviz" name="rviz" output="screen"/-->
 
 </launch>
