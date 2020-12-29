@@ -12,6 +12,7 @@ import message_filters
 import tf
 import random
 from geometry_msgs.msg._Pose import Pose
+from sklearn.linear_model import RANSACRegressor
 
 class Calibrator(object):
     def __init__(self):
@@ -76,12 +77,11 @@ class Calibrator(object):
             delta = pos_ - pos 
             delta_gps.append(delta[:, 0])
             delta_vio.append(delta[:, 1])
-        print(delta_gps)
-        print(delta_vio)
-        print('x')
             
         # ransac
-        pass
+        # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
+        print(delta_gps)
+        print(delta_vio)
     
     def getPositionFromOdom(self, odom):
         x = odom.pose.pose.position.x
