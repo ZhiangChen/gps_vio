@@ -67,22 +67,43 @@ class Calibrator(object):
         return (x1 + x2 + x3)
     
     def estimateTransform(self):
-        # get delta data
-        delta_gps = []
-        delta_vio = []
+        # get ransac data
+        Y = []
+        X = []
         N = len(self.samples)
         for i in range(N-1):
             pos = self.samples[i]
             pos_ = self.samples[i+1]
             delta = pos_ - pos 
-            delta_gps.append(delta[:, 0])
-            delta_vio.append(delta[:, 1])
-            
+            delta_gps = delta[:, 0]
+            delta_vio = delta[:, 1]
+            x1 = np.array((delta_vio[0], delta_vio[1], delta_vio[2], 0, 0, 0, 0, 0, 0, 1, 0, 0))
+            y1 = delta_gps[0]
+            x2 = np.array((0, 0, 0, delta_vio[0], delta_vio[1], delta_vio[2], 0, 0, 0, 0, 1, 0))
+            y2 = delta_gps[1]
+            x3 = np.array((0, 0, 0, 0, 0, 0, delta_vio[0], delta_vio[1], delta_vio[2], 0, 0, 1))
+            y3 = delta_gps[2]
+            X.append(x1)
+            X.append(x2)
+            X.append(x3)
+            Y.append(y1)
+            Y.append(y2)
+            Y.append(y3)
+        X = np.asarray(X)
+        Y = np.asarray(Y)
+        print("data size: ", X.shape[0])
         # ransac
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
-        print(delta_gps)
-        print(delta_vio)
-    
+        self.ransacRotation(X, Y)
+
+    def ransacRotation(self, X, Y):
+        X = X[:, :-3]
+        print(X.shape)
+        reg = RANSACRegressor(random_state=0).fit(X, Y)
+        params = reg.estimator_.coef_
+        inlier_mask = reg.inlier_mask_
+        print(params.reshape((3,3)))
+        
     def getPositionFromOdom(self, odom):
         x = odom.pose.pose.position.x
         y = odom.pose.pose.position.y
@@ -102,11 +123,13 @@ class Calibrator(object):
         
 class Transformer(object):
     def __init__(self):
-        trans_vec = (0, 0, 1)
+        trans_vec = (0.1, 0.1, 1)
         trans = tf.transformations.translation_matrix(trans_vec)
         quaternion = (0.3826834, 0, 0, 0.9238795)
         rot = tf.transformations.quaternion_matrix(quaternion)
         self.T = np.matmul(trans, rot)
+        print("Ground truth T_vio2robot: ")
+        print(np.linalg.inv(self.T))
         
         self.sub_vio = rospy.Subscriber('/mavros/odometry/in', Odometry, self.vioCallback, queue_size=1)
         self.pub_vio = rospy.Publisher('/vio/odom', Odometry, queue_size=1)

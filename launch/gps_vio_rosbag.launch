@@ -9,7 +9,7 @@
 		<remap from="/gps/odom" to="/mavros/odometry/in"/>
 	</node>
 
-	<node pkg="tf" type="static_transform_publisher" name="t265_broadcaster" args="-0.0388133 -0.0619189 -0.0437621 0 0 -0.8509035 0.525322 map camera_odom_frame 10" />
+	<!--node pkg="tf" type="static_transform_publisher" name="t265_broadcaster" args="-0.0388133 -0.0619189 -0.0437621 0 0 -0.8509035 0.525322 map camera_odom_frame 10" /-->
 
 	<node pkg="rosbag" type="play" name="rosbag" args="--clock -l /home/zhiang/catkin_ws/gps_vio.bag">
 		<remap from="/gpsvio/odom" to="/odom"/>
