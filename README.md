@@ -2,6 +2,8 @@
 
 A ROS package: GPS-aided VIO using a factor graph that fuses VIO from Realsense T265 and GPS from PX4
 
+More technical details can be found on github repository [wiki](https://github.com/ZhiangChen/gps_vio/wiki)
+
 ## Installation
 #### Dependences
 1. Realsense SDK: [librealsense](https://github.com/IntelRealSense/librealsense/blob/development/doc/distribution_linux.md)
