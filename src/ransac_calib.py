@@ -20,9 +20,14 @@ class Calibrator(object):
         self.P_rr = []
         self.p_rr = []
         self.p_cc = []
+        self.calib_rot_result = False
+        self.calib_trans_result = False
         self.distance_threshold = 0.1
         self.distance_max = 2.0
-        self.angle_threshold = 15/180.*np.pi
+        self.trans_angle_threshold = 15/180.*np.pi
+        self.rot_angle_threshold = 15/180.*np.pi
+        self.rot_min = 15/180.*np.pi
+        self.rot_max = 70/180.*np.pi
         self.previous_vio_rot = 0
         self.sub_gps = message_filters.Subscriber('/gps/odom', Odometry)
         self.sub_vio = message_filters.Subscriber('/vio/odom', Odometry)
@@ -36,12 +41,34 @@ class Calibrator(object):
         vio_pos = self.getPositionFromOdom(vio_data)
         gps_rot = self.getRotFromOdom(gps_data)
         vio_rot = self.getRotFromOdom(vio_data)
+        self.calibrateTransform(gps_pos, vio_pos, gps_rot, vio_rot)
+
+    def calibrateTransform(self, gps_pos, vio_pos, gps_rot, vio_rot):
+        self.calib_rot_result = True
+        # calibrate rotation matrix
+        if not self.calib_rot_result:
+            R = self.calibrateRotation(gps_pos, vio_pos, gps_rot, vio_rot)
+        
+        # assume the rotation is known for test purpose
+        self.calib_trans_result = False
+        trans_vec = (0, 0, 0)
+        trans = tf.transformations.translation_matrix(trans_vec)
+        rot = tf.transformations.euler_matrix(0.5, 1.0471975512, -0.5)
+        T_robot2vio = np.matmul(trans, rot)
+        R = np.linalg.inv(T_robot2vio)
+        # calibrate translation matrix
+        if not self.calib_trans_result:
+            trans = self.calibrateTranslation(R, gps_pos, vio_pos, gps_rot, vio_rot)
+    
+    def calibrateTransform2(self):
+        pass
+    
+    def calibrateRotation(self, gps_pos, vio_pos, gps_rot, vio_rot):
         # append sample
         sample = np.asarray((gps_pos, vio_pos)).transpose()
         if len(self.samples) == 0:
-            self.samples.append(sample)
+            self.append(sample, gps_rot, gps_pos, vio_pos)
             self.previous_vio_rot = vio_rot
-            self.appendRpp(gps_rot, gps_pos, vio_pos)
         else:
             previous_sample = self.samples[-1]
             distance = np.linalg.norm(previous_sample - sample)
@@ -50,17 +77,46 @@ class Calibrator(object):
             
             angle = self.calcRotationDiff(self.previous_vio_rot, vio_rot)
             
-            if angle <= self.angle_threshold:
-                self.samples.append(sample)
+            if angle <= self.trans_angle_threshold:
+                self.append(sample, gps_rot, gps_pos, vio_pos)
                 self.resetDistanceThreshold()
                 self.previous_vio_rot = vio_rot
-                self.appendRpp(gps_rot, gps_pos, vio_pos)
-        # estimate transform using RANSAC
-        if len(self.samples) % 10 == 0:
-            self.estimateTransform()
-        
+                # estimate rotation using RANSAC
+                if len(self.samples) % 10 == 0:
+                    R = self.estimateRotation()
+                    self.calib_rot_result = True
+                    return R
+                else:
+                    return None
+            else:
+                return None
     
-    def estimateTransform(self):
+    def calibrateTranslation(self, R, gps_pos, vio_pos, gps_rot, vio_rot):
+        # append sample
+        sample = np.asarray((gps_pos, vio_pos)).transpose()
+        if len(self.samples) == 0:
+            self.append(sample, gps_rot, gps_pos, vio_pos)
+            self.previous_vio_rot = vio_rot
+        else:
+            previous_sample = self.samples[-1]
+            angle = self.calcRotationDiff(self.previous_vio_rot, vio_rot)
+            
+            #print(angle, self.rot_angle_threshold)
+            if angle >= self.rot_angle_threshold:
+                self.append(sample, gps_rot, gps_pos, vio_pos)
+                self.resetRotationThreshold()
+                self.previous_vio_rot = vio_rot
+                # estimate translation using RANSAC
+                if len(self.samples) % 10 == 0:
+                    trans = self.estimateTranslation(R)
+                    self.calib_trans_result = True
+                    return trans
+                else:
+                    return None
+            else:
+                return None
+        
+    def estimateRotation(self):
         # get ransac data
         Y = []
         X = []
@@ -87,20 +143,19 @@ class Calibrator(object):
             Y.append(y3)
         X = np.asarray(X)
         Y = np.asarray(Y)
-        print("data size: ", X.shape[0])
+        print("equation number: ", X.shape[0])
         # ransac
         # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.RANSACRegressor.html
-        R = self.ransacRotation(X, Y)
-        self.ransacTaslation(R)
-
-    def ransacRotation(self, X, Y):
         X = X[:, :-3]
         reg = RANSACRegressor(random_state=0).fit(X, Y)
         params = reg.estimator_.coef_
         inlier_mask = reg.inlier_mask_
-        return params.reshape((3,3))
+        R = params.reshape((3,3))
+        # todo: find the closest rotation matrix in SO(3)
+        print(R)
+        return R
         
-    def ransacTaslation(self, R):
+    def estimateTranslation(self, R):
         P_rr_n = np.array(self.P_rr)
         p_rr_n = np.array(self.p_rr)
         p_cc_n = np.array(self.p_cc)
@@ -111,43 +166,40 @@ class Calibrator(object):
             P_rr = P_rr_n[i]
             p_rr = p_rr_n[i]
             p_cc = p_cc_n[i]
-            A, r = self.computeTaslationSystemParam(P_rr, p_rr, p_cc, R)
+            A, r = self.computeTanslationSystemParam(P_rr, p_rr, p_cc, R)
             for j in range(3):
                 X.append(A[j, :])
                 Y.append(r[j])
-            #print(A)
-            #print(r)
+            
             inv_P_rr = np.linalg.inv(P_rr)
-            T0 = tf.transformations.translation_matrix((-0.1, -0.77781744, -0.63639613))
-            print('P_rr\n')
-            print(P_rr)
-            print('inv_P_rr\n')
-            print(inv_P_rr)
-            print('p_rr\n')
-            print(p_rr)
-            print('p_cc\n')
-            print(p_cc)
-            print('left\n')
-            print(np.matmul(np.matmul(np.matmul(P_rr, T0), inv_P_rr), p_rr))
-            trans_vec = (0.1, 0.1, 1)
+            trans_vec = (0.1, 0, -0.01)
             trans = tf.transformations.translation_matrix(trans_vec)
-            quaternion = (0.3826834, 0, 0, 0.9238795)
-            rot = tf.transformations.quaternion_matrix(quaternion)
+            rot = tf.transformations.euler_matrix(0.5, 1.0471975512, -0.5)
             T = np.matmul(trans, rot)
             T_gt = np.linalg.inv(T)
-            print('right\n')
-            print(np.matmul(T_gt, p_cc))
-            print('-'*20)
             p_rc = np.matmul(T_gt, p_cc)
+            trans_vec = T_gt[:3, 3]
+            T0 = tf.transformations.translation_matrix(trans_vec)
             p_const = np.matmul(inv_P_rr, p_rc) - np.matmul(inv_P_rr, p_rr)
-            print('p_const\n')
+            print('left')
+            print(np.matmul(np.matmul(np.matmul(P_rr, T0), inv_P_rr), p_rr))
+            print('right')
+            print(np.matmul(T_gt, p_cc))
+            print('p_const')
             print(p_const)
-            print('\n')
+            print(P_rr)
+            print(A)
+        
+        X = np.asarray(X)
+        Y = np.asarray(Y)
+        print("equation number: ", X.shape[0])
         reg = RANSACRegressor(random_state=0).fit(X, Y)
         params = reg.estimator_.coef_
         print(params)
+        return params
             
-    def computeTaslationSystemParam(self, P_rr, p_rr, p_cc, R):
+    def computeTanslationSystemParam(self, P_rr, p_rr, p_cc, R):
+        # check out wiki for the translation system: https://github.com/ZhiangChen/gps_vio/wiki/T265-External-Calibration#2-estimating-translation-matrix
         inv_P_rr = np.linalg.inv(P_rr)
         a11 = P_rr[0, 0]
         a12 = P_rr[0, 1]
@@ -208,22 +260,28 @@ class Calibrator(object):
     def resetDistanceThreshold(self):
         self.distance_threshold = random.random()*self.distance_max
         print("Next translation goal: ", self.distance_threshold)
+        
+    def resetRotationThreshold(self):
+        r = (random.random() + self.rot_min/np.pi) / (1. + self.rot_min/np.pi + self.rot_max/np.pi)
+        self.rot_angle_threshold = r*np.pi/2
+        print("Next rotation goal: ", self.rot_angle_threshold/np.pi*180)
     
     def calcRotationDiff(self, r1, r2):
         err_matrix = (np.matmul(r1.transpose(),r2) - np.matmul(r1,r2.transpose()))/2.
         x3 = err_matrix[1, 0]
         x2 = err_matrix[0, 2]
         x1 = err_matrix[2, 1]
-        return (x1 + x2 + x3)
+        #print(x1, x2, x3)
+        return abs(x1) + abs(x2) + abs(x3)
     
-    def appendRpp(self, R_rr, p_rr, p_cc):
+    def append(self, sample, R_rr, p_rr, p_cc):
         P_rr = np.zeros((4, 4))
         P_rr[:4, :4] = R_rr
         P_rr[:, 3] = p_rr
         self.P_rr.append(P_rr)
         self.p_rr.append(p_rr)
         self.p_cc.append(p_cc)
-        
+        self.samples.append(sample)
         
     def getPositionFromOdom(self, odom):
         x = odom.pose.pose.position.x
@@ -244,36 +302,38 @@ class Calibrator(object):
         
 class Transformer(object):
     def __init__(self):
-        trans_vec = (0.1, 0.1, 1)
+        trans_vec = (0.1, 0, -0.01)
         trans = tf.transformations.translation_matrix(trans_vec)
-        quaternion = (0.3826834, 0, 0, 0.9238795)
-        rot = tf.transformations.quaternion_matrix(quaternion)
-        self.T = np.matmul(trans, rot)
+        rot = tf.transformations.euler_matrix(0.5, 1.0471975512, -0.5)
+        self.T_robot2vio = np.matmul(trans, rot)
         print("Ground truth T_vio2robot: ")
-        print(np.linalg.inv(self.T))
-        T_gt = np.linalg.inv(self.T)
+        self.T_vio2robot = np.linalg.inv(self.T_robot2vio)
+        print(self.T_vio2robot)
         
         self.sub_vio = rospy.Subscriber('/mavros/odometry/in', Odometry, self.vioCallback, queue_size=1)
         self.pub_vio = rospy.Publisher('/vio/odom', Odometry, queue_size=1)
         
-    def vioCallback(self, vio_odom):
+    def vioCallback(self, uav_odom):
         tf_odom = Odometry()
-        tf_odom.header = vio_odom.header
-        x = vio_odom.pose.pose.position.x
-        y = vio_odom.pose.pose.position.y
-        z = vio_odom.pose.pose.position.z
+        tf_odom.header = uav_odom.header
+        x = uav_odom.pose.pose.position.x
+        y = uav_odom.pose.pose.position.y
+        z = uav_odom.pose.pose.position.z
         pos = (x, y, z)
-        x = vio_odom.pose.pose.orientation.x
-        y = vio_odom.pose.pose.orientation.y
-        z = vio_odom.pose.pose.orientation.z
-        w = vio_odom.pose.pose.orientation.w
+        x = uav_odom.pose.pose.orientation.x
+        y = uav_odom.pose.pose.orientation.y
+        z = uav_odom.pose.pose.orientation.z
+        w = uav_odom.pose.pose.orientation.w
         qua = (x, y, z, w)
         trans = tf.transformations.translation_matrix(pos)
         rot = tf.transformations.quaternion_matrix(qua)
-        pose = np.matmul(trans, rot)
-        tf_pose = np.matmul(self.T, pose)
-        tf_pos = tf.transformations.translation_from_matrix(tf_pose)
-        tf_qua = tf.transformations.quaternion_from_matrix(tf_pose)
+        uav_pose_r = np.matmul(trans, rot)  # uav's pose in robot coordinates
+        
+        vio_pose_r = np.matmul(self.T_robot2vio, uav_pose_r)  # vio's pose in robot coordinates
+        vio_pose_c = np.matmul(vio_pose_r, self.T_vio2robot)
+        
+        tf_pos = tf.transformations.translation_from_matrix(vio_pose_c)
+        tf_qua = tf.transformations.quaternion_from_matrix(vio_pose_c)
         tf_odom.pose.pose.position.x = tf_pos[0]
         tf_odom.pose.pose.position.y = tf_pos[1]
         tf_odom.pose.pose.position.z = tf_pos[2]
