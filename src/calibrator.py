@@ -13,8 +13,9 @@ import tf
 import random
 from geometry_msgs.msg._Pose import Pose
 from sklearn.linear_model import RANSACRegressor
+from utils import so3_estimation
 
-estimation_state_dict = {'rotation':0, 'translation':1}
+estimation_state_dict = {'rotation':0, 'translation':1, 'done':2}
 data_collecting_list = ['x', 'y', 'z', 'roll', 'pitch', 'yaw']
 
 class Estimator(object):
@@ -23,6 +24,7 @@ class Estimator(object):
         self.P_rr = None  # capital p is pose; little p is position
         self.P_cc = None
         self.samples = []  # samples are constructed by pose or positions or both depending on the estimation algorithm
+        self.N = 4
 
     def get_transforms(self, odom):
         x = odom.pose.pose.position.x
@@ -46,6 +48,9 @@ class Estimator(object):
         #print(x1, x2, x3)
         return abs(x1) + abs(x2) + abs(x3)
 
+    def add_N(self, n):
+        self.N = self.N + n
+
 class RotEstimator(Estimator):
     def __init__(self):
         Estimator.__init__(self)
@@ -53,7 +58,6 @@ class RotEstimator(Estimator):
         self.distance_min = 0.1
         self.distance_max = 0.75
         self.tolerance_angle = 15 / 180. * np.pi
-        self.N = 4
         self.N_x = 0
         self.N_y = 0
         self.N_z = 0
@@ -123,7 +127,8 @@ class RotEstimator(Estimator):
         params = reg.estimator_.coef_
         inlier_mask = reg.inlier_mask_
         R = params.reshape((3, 3))
-        # todo: find the closest rotation matrix in SO(3)
+        #R = so3_estimation.Rot_Estimate_Frobenius_norm(R)
+        R = so3_estimation.Rot_Estimate_SVD_SO3(R)
         return R
 
     def insert_sample(self, T_vio, T_gps):
@@ -168,7 +173,6 @@ class TransEstimator(Estimator):
         self.rot_min = 15 / 180. * np.pi
         self.rot_max = 70 / 180. * np.pi
         self.rot_angle_threshold = 15 / 180. * np.pi  # self.rot_angle_threshold is bounded by self.rot_min and self.rot_max
-        self.N = 4
         self.N_roll = 0
         self.N_pitch = 0
         self.N_yaw = 0
@@ -334,6 +338,7 @@ class TransEstimator(Estimator):
             self.P_rr = T_gps
             return True
 
+
 class Calibrator(object):
     """
     odometry external calibration interface
@@ -367,11 +372,21 @@ class Calibrator(object):
             else:
                 self.estimated_trans = self.trans_estimator.estimate_params()
                 # display the estimated transformation params
-                print(self.estimated_trans)
-                print(self.estimated_rot)
-                # display the calibration errors
+                estimated_T = np.zeros((4, 4))
+                #print(self.estimated_trans)
+                #print(self.estimated_rot)
+                estimated_T[:3, :3] = self.estimated_rot
+                estimated_T[:3, 3] = self.estimated_trans
+                print("Estimated transform: ")
+                print(estimated_T)
                 # prompt option of adding more samples to refine estimation
-                raw_input("Rotation Estimation Done. \nPress Enter to continue...")
+                s = raw_input("Rotation Estimation Done. \nPress 1 to add one more group of samples\nPress any other to stop...")
+                if int(s) == 1:
+                    self.rot_estimator.add_N(4)
+                    self.trans_estimator.add_N(4)
+                    self.current_estimation = estimation_state_dict['translation']
+                else:
+                    self.current_estimation = estimation_state_dict['done']
 
 if __name__ == '__main__':
     rospy.init_node('odom_calibrator', anonymous=False)
